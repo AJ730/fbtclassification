@@ -2,7 +2,7 @@
 Australian Locations database and state mapping for FBT pipeline.
 Extracted from notebook to enable reuse across modules.
 """
-from typing import Dict
+from typing import Dict, Set
 
 AUSTRALIAN_LOCATIONS: Dict[str, Dict[str, object]] = {
     # Major Cities
@@ -210,4 +210,22 @@ STATE_MAPPING: Dict[str, str] = {
     'tas': 'TAS', 'tasmania': 'TAS',
     'nt': 'NT', 'northern territory': 'NT',
     'act': 'ACT', 'australian capital territory': 'ACT'
+}
+
+# Centralized blacklist for NER post-processing (non-location tokens)
+LOCATION_BLACKLIST: Set[str] = {
+    'monday','tuesday','wednesday','thursday','friday','saturday','sunday',
+    'january','february','march','april','may','june','july','august','september','october','november','december',
+    'team','client','staff','office','meeting','dinner','lunch','breakfast','conference','seminar','training','party','event',
+    'taxi','uber','flight','qantas','virgin','jetstar','trip',
+    'at','to','from','in','on','for','with','the','a','an',
+    'pty','ltd','inc','corp','hotel','cafe','restaurant','bar','motel','resort','inn',
+    'christmas','easter','new','year','day','night','morning','afternoon','evening','week','month','annual','quarterly',
+}
+
+# Centralized country aliases mapping to ISO alpha-2 codes (lowercase)
+COUNTRY_ALIASES: Dict[str, str] = {
+    'uk': 'gb', 'u.k.': 'gb', 'united kingdom': 'gb', 'great britain': 'gb', 'britain': 'gb', 'england': 'gb',
+    'usa': 'us', 'u.s.a.': 'us', 'u.s.': 'us', 'united states': 'us', 'america': 'us',
+    'uae': 'ae', 'united arab emirates': 'ae', 'holland': 'nl',
 }

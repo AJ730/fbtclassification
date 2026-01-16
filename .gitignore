@@ -45,3 +45,6 @@ profile.json*
 uv.lock
 pyproject.toml
 .python-version
+
+# environment files
+.env
