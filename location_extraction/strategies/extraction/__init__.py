@@ -3,7 +3,6 @@ from .vector_space_base import VectorSpaceGazetteerStrategy
 from .sklearn_bow_strategy import SklearnBoWStrategy
 from .sklearn_tfidf_strategy import SklearnTfidfStrategy
 from .aho_corasick_strategy import AhoCorasickStrategy
-from .rapidfuzz_fuzzy_strategy import RapidFuzzFuzzyStrategy
 from .phonetic_gazetteer_strategy import PhoneticGazetteerStrategy
 from .country_detector import CountryDetector
 from .nltk_ner_strategy import NltkNerStrategy
@@ -16,7 +15,6 @@ __all__ = [
     "SklearnBoWStrategy",
     "SklearnTfidfStrategy",
     "AhoCorasickStrategy",
-    "RapidFuzzFuzzyStrategy",
     "PhoneticGazetteerStrategy",
     "CountryDetector",
     "NltkNerStrategy",

@@ -6,7 +6,7 @@ from ..base import BaseModel, PrivateAttr
 
 class PhoneticGazetteerStrategy(BaseModel):  # type: ignore[misc]
     locations_db: Dict[str, Dict]
-    min_token_match_ratio: float = 0.6
+    min_token_match_ratio: float = 0.5
 
     _name_tokens: Optional[Dict[str, List[str]]] = PrivateAttr(default_factory=dict)
     _token_meta_index: Optional[Dict[str, Set[str]]] = PrivateAttr(default_factory=dict)

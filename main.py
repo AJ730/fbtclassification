@@ -363,14 +363,14 @@ try_add(
     "Phonetic Gazetteer",
     lambda: PhoneticGazetteerStrategy(
         locations_db=AUSTRALIAN_LOCATIONS,
-        distance_threshold=2,
+        distance_threshold=3,  # Increased from 2 for more matches
     ),
 )
 
 try_add(
     "SpacyNER (Small Model)",
     lambda: SpacyNerStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,
+        locations_db=AUSTRALIAN_LOCATIONS,  # Reverted to filter to known Australian locations
         model_name="en_core_web_sm",
         models_preference=[
             "en_core_web_sm",
@@ -381,7 +381,7 @@ try_add(
 try_add(
     "SpacyNER (Transformer Pipeline Model)",
     lambda: SpacyNerStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,
+        locations_db=AUSTRALIAN_LOCATIONS,  # Reverted to filter to known Australian locations
         model_name="en_core_web_trf",
         models_preference=[
             "en_core_web_trf",
