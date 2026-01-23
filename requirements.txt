@@ -122,4 +122,4 @@ rapidfuzz==3.14.3
 pyahocorasick==2.3.0
 jellyfish==1.2.1
 pycountry==24.6.1
-spacy[lookups,transformers]==3.8.11
+spacy==3.8.11

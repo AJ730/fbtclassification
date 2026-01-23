@@ -6,6 +6,7 @@ import pandas as pd
 from .location_db import AUSTRALIAN_LOCATIONS
 from .feature_calculator import FeatureCalculator
 from .strategies import LocationExtractionStrategy, GeocodingStrategy
+from .strategies.geocoding import NominatimGeocodingStrategy, GoogleSearchGeocodingStrategy
 
 
 CONFIG = {
@@ -28,7 +29,7 @@ class LocationExtractor:
         self.cache = {}
 
         self.strategy = strategy
-        self._geocoder = geocoding_strategy
+        self._geocoder = geocoding_strategy or GoogleSearchGeocodingStrategy(inner=NominatimGeocodingStrategy(country_hint="Australia"))
         self._feature_calc = FeatureCalculator((self.reference['lat'], self.reference['lon']))
 
     def extract_locations(self, text: str) -> List[str]:
@@ -42,12 +43,20 @@ class LocationExtractor:
         location_name = location_name.lower().strip()
         if location_name in self.cache:
             return self.cache[location_name]
-        if self._geocoder is None:
-            return None
-        coords = self._geocoder.geocode(location_name, context)
-        if coords:
+        
+        # Try DB first
+        loc = self.locations_db.get(location_name)
+        if loc:
+            coords = {'lat': loc['lat'], 'lon': loc['lon'], 'type': loc.get('type', 'city'), 'state': loc.get('state', '')}
             self.cache[location_name] = coords
             return coords
+        
+        # Then API
+        if self._geocoder:
+            coords = self._geocoder.geocode(location_name, context)
+            if coords:
+                self.cache[location_name] = coords
+                return coords
         return None
 
     def calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -86,16 +95,31 @@ class LocationExtractor:
             'is_local': 0,
             'is_interstate': 0,
             'is_remote': 0,
-            'travel_category': 'unknown'
+            'travel_category': 'unknown',
+            'extracted_locations': '',
+            'extracted_count': 0,
         }
 
         locations = self.extract_locations(text)
-        features['locations_found'] = len(locations)
         if not locations:
             return features
 
-        features['location_names'] = ', '.join(locations)
-        primary = locations[0]
+        features['extracted_locations'] = ', '.join(locations)
+        features['extracted_count'] = len(locations)
+
+        # Filter locations to only those that can be geocoded
+        geocoded_locations = []
+        for loc in locations:
+            coords = self.get_coordinates(loc, text)
+            if coords:
+                geocoded_locations.append(loc)
+
+        features['locations_found'] = len(geocoded_locations)
+        if not geocoded_locations:
+            return features
+
+        features['location_names'] = ', '.join(geocoded_locations)
+        primary = geocoded_locations[0]
         features['primary_location'] = primary
         coords = self.get_coordinates(primary, text)
         if coords:
