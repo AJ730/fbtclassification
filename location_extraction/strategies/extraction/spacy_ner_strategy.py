@@ -122,10 +122,11 @@ class SpacyNerStrategy(BaseModel):  # type: ignore[misc]
                         cand.append(cname)
             except Exception:
                 pass
-            
+
+        keys = self._keys or set()
         names = {w.lower() for w in cand}
         if not names:
             tokens = {t.lower() for t in re.findall(r"[\w'-]+", text)}
             names = tokens
-        matches = names  # Remove filtering to locations_db for online extraction
+        matches = names.intersection(keys)
         return list(matches)

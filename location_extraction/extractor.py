@@ -5,6 +5,7 @@ import pandas as pd
 
 from .location_db import AUSTRALIAN_LOCATIONS
 from .feature_calculator import FeatureCalculator
+from .location_validator import LocationValidator
 from .strategies import LocationExtractionStrategy, GeocodingStrategy
 from .strategies.geocoding import NominatimGeocodingStrategy, GoogleSearchGeocodingStrategy
 
@@ -27,6 +28,7 @@ class LocationExtractor:
         self.locations_db = AUSTRALIAN_LOCATIONS
         self.reference = reference_location or CONFIG['reference_location']
         self.cache = {}
+        self.validator = LocationValidator(self.locations_db)
 
         self.strategy = strategy
         self._geocoder = geocoding_strategy or GoogleSearchGeocodingStrategy(inner=NominatimGeocodingStrategy(country_hint="Australia"))
@@ -38,6 +40,35 @@ class LocationExtractor:
         if self.strategy is None:
             return []
         return self.strategy.extract(str(text))
+
+    def _extract_unfiltered_locations(self, text: str) -> List[str]:
+        """
+        Extract locations without filtering against DB.
+        Used as fallback when DB-filtered extraction returns no results.
+        Attempts to extract any GPE/LOC entities from spaCy NER.
+        """
+        if pd.isna(text) or not text or self.strategy is None:
+            return []
+        
+        try:
+            # Try to extract without DB filtering by using spaCy directly
+            from .strategies.extraction.spacy_ner_strategy import SpacyNerStrategy
+            if isinstance(self.strategy, SpacyNerStrategy):
+                # Use spaCy's raw NER output without DB filtering
+                nlp = self.strategy._nlp
+                if nlp:
+                    doc = nlp(str(text))
+                    locations = []
+                    for ent in doc.ents:
+                        if ent.label_ in ("GPE", "LOC"):
+                            loc = ent.text.strip().lower()
+                            if len(loc) >= 3 and loc not in locations:
+                                locations.append(loc)
+                    return locations
+        except Exception:
+            pass
+        
+        return []
 
     def get_coordinates(self, location_name: str, context: Optional[str] = None) -> Optional[Dict]:
         location_name = location_name.lower().strip()
@@ -79,7 +110,14 @@ class LocationExtractor:
         else:
             return distance_km / 80
 
-    def extract_location_features(self, text: str) -> Dict:
+    def extract_location_features(self, text: str, allow_online_fallback: bool = False) -> Dict:
+        """
+        Extract locations with hybrid approach:
+        1. Extract DB-filtered locations from strategy
+        2. Geocode using DB-first lookup (fast and reliable)
+        3. If allow_online_fallback=True and no geocoded results found,
+           try online extraction/geocoding for unmatched locations
+        """
         features = {
             'locations_found': 0,
             'location_names': '',
@@ -98,6 +136,9 @@ class LocationExtractor:
             'travel_category': 'unknown',
             'extracted_locations': '',
             'extracted_count': 0,
+            'validation_confidence': 0.0,
+            'validation_reasons': '',
+            'is_valid_location': 0,
         }
 
         locations = self.extract_locations(text)
@@ -107,12 +148,22 @@ class LocationExtractor:
         features['extracted_locations'] = ', '.join(locations)
         features['extracted_count'] = len(locations)
 
-        # Filter locations to only those that can be geocoded
+        # Filter locations to only those that can be geocoded AND are valid
         geocoded_locations = []
         for loc in locations:
             coords = self.get_coordinates(loc, text)
-            if coords:
+            if coords and self.validator.is_valid_location(loc, coords):
                 geocoded_locations.append(loc)
+
+        # If no geocoded results and online fallback enabled, try extracting without DB filter
+        if not geocoded_locations and allow_online_fallback:
+            online_locations = self._extract_unfiltered_locations(text)
+            for loc in online_locations:
+                if loc.lower() not in [l.lower() for l in locations]:  # Skip already tried
+                    coords = self.get_coordinates(loc, text)
+                    if coords and self.validator.is_valid_location(loc, coords):
+                        geocoded_locations.append(loc)
+                        break  # Stop after finding one online location
 
         features['locations_found'] = len(geocoded_locations)
         if not geocoded_locations:
@@ -126,6 +177,12 @@ class LocationExtractor:
             features['primary_lat'] = coords['lat']
             features['primary_lon'] = coords['lon']
             features['primary_state'] = coords.get('state', '')
+
+            # Add confidence validation for the primary location
+            validation_result = self.validator.validate_with_confidence(primary, coords)
+            features['validation_confidence'] = validation_result['confidence']
+            features['validation_reasons'] = '; '.join(validation_result['reasons'])
+            features['is_valid_location'] = int(validation_result['is_valid'])
 
             loc_type = coords.get('type', '')
             features['is_international'] = int(loc_type == 'international')

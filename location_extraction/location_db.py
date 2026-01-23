@@ -198,6 +198,259 @@ AUSTRALIAN_LOCATIONS: Dict[str, Dict[str, object]] = {
     'bangkok': {'lat': 13.7563, 'lon': 100.5018, 'state': 'TH', 'type': 'international'},
     'mumbai': {'lat': 19.0760, 'lon': 72.8777, 'state': 'IN', 'type': 'international'},
     'dubai': {'lat': 25.2048, 'lon': 55.2708, 'state': 'AE', 'type': 'international'},
+    
+    # Australian Restaurants & Venues (Popular chains)
+    'quay': {'lat': -33.8572, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'rockpool': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'aria restaurant': {'lat': -33.8584, 'lon': 151.2119, 'state': 'NSW', 'type': 'restaurant'},
+    'tetsuya': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'mr wong': {'lat': -33.8704, 'lon': 151.2073, 'state': 'NSW', 'type': 'restaurant'},
+    'sepia': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'est': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'bel and brio': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'golden century': {'lat': -33.8729, 'lon': 151.2065, 'state': 'NSW', 'type': 'restaurant'},
+    'hubert': {'lat': -33.8680, 'lon': 151.2110, 'state': 'NSW', 'type': 'restaurant'},
+    'firedoor': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'ester': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'otto': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'attica': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'brae': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'donovan': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'stokehouse': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'vue de monde': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'grossi florentino': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'milon': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'tivoli': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'restaurant'},
+    'urbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'restaurant'},
+    
+    # Coffee Chains
+    'coffee culture': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'cafe'},
+    'little collins': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'cafe'},
+    'brew': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'cafe'},
+    'campos': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'cafe'},
+    'single origin': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'cafe'},
+    'two hands': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'cafe'},
+    
+    # Hotels & Accommodation
+    'park hyatt': {'lat': -33.8572, 'lon': 151.2119, 'state': 'NSW', 'type': 'hotel'},
+    'shangri-la': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    'four seasons': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    'langham': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'hotel'},
+    'crown': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'hotel'},
+    'hilton': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    'westin': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    'marriott': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    'ritz carlton': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'hotel'},
+    
+    # Pubs & Bars
+    'the royal': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'arbitrage': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'bar americano': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'venue'},
+    'basement discotheque': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'venue'},
+    
+    # Fast Casual
+    'greca': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'lilia': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'papi chulo': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'freddy smalls': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'barangaroo reserve': {'lat': -33.8572, 'lon': 151.2119, 'state': 'NSW', 'type': 'venue'},
+    
+    # Libraries
+    'state library of nsw': {'lat': -33.8667, 'lon': 151.2094, 'state': 'NSW', 'type': 'library'},
+    'state library of victoria': {'lat': -37.8099, 'lon': 144.9654, 'state': 'VIC', 'type': 'library'},
+    'state library of queensland': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'library'},
+    'state library of south australia': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'library'},
+    'state library of western australia': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'library'},
+    'national library of australia': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'library'},
+    
+    # Museums
+    'australian museum': {'lat': -33.8772, 'lon': 151.2099, 'state': 'NSW', 'type': 'museum'},
+    'national gallery of victoria': {'lat': -37.8226, 'lon': 144.9689, 'state': 'VIC', 'type': 'museum'},
+    'queensland museum': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'museum'},
+    'south australian museum': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'museum'},
+    'western australian museum': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'museum'},
+    'tasmanian museum and art gallery': {'lat': -42.8821, 'lon': 147.3272, 'state': 'TAS', 'type': 'museum'},
+    'museum and art gallery of the northern territory': {'lat': -12.4634, 'lon': 130.8456, 'state': 'NT', 'type': 'museum'},
+    'national museum of australia': {'lat': -35.2923, 'lon': 149.1217, 'state': 'ACT', 'type': 'museum'},
+    
+    # Tourist Attractions
+    'sydney opera house': {'lat': -33.8568, 'lon': 151.2153, 'state': 'NSW', 'type': 'attraction'},
+    'sydney harbour bridge': {'lat': -33.8523, 'lon': 151.2108, 'state': 'NSW', 'type': 'attraction'},
+    'great barrier reef': {'lat': -18.2871, 'lon': 147.6992, 'state': 'QLD', 'type': 'attraction'},
+    'uluru': {'lat': -25.3444, 'lon': 131.0369, 'state': 'NT', 'type': 'attraction'},
+    'ayers rock': {'lat': -25.3444, 'lon': 131.0369, 'state': 'NT', 'type': 'attraction'},
+    'bondi beach': {'lat': -33.8915, 'lon': 151.2767, 'state': 'NSW', 'type': 'attraction'},
+    'great ocean road': {'lat': -38.6623, 'lon': 143.1048, 'state': 'VIC', 'type': 'attraction'},
+    'daintree rainforest': {'lat': -16.1733, 'lon': 145.4187, 'state': 'QLD', 'type': 'attraction'},
+    'kakadu national park': {'lat': -13.0923, 'lon': 132.3937, 'state': 'NT', 'type': 'attraction'},
+    'blue mountains': {'lat': -33.7125, 'lon': 150.3117, 'state': 'NSW', 'type': 'attraction'},
+    'fraser island': {'lat': -25.3333, 'lon': 153.0833, 'state': 'QLD', 'type': 'attraction'},
+    'whitsunday islands': {'lat': -20.2763, 'lon': 148.7137, 'state': 'QLD', 'type': 'attraction'},
+    'pinnacles': {'lat': -25.5705, 'lon': 113.7790, 'state': 'WA', 'type': 'attraction'},
+    'kangaroo island': {'lat': -35.8000, 'lon': 137.2333, 'state': 'SA', 'type': 'attraction'},
+    'tasmanian wilderness': {'lat': -43.0000, 'lon': 146.5000, 'state': 'TAS', 'type': 'attraction'},
+    
+    # Fast Food Chain Locations - Multiple outlets per city
+    # McDonald's locations
+    'mcdonalds sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'mcdonalds sydney north': {'lat': -33.8288, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'mcdonalds sydney south': {'lat': -33.9088, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'mcdonalds melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'mcdonalds melbourne south': {'lat': -37.8536, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'mcdonalds brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'mcdonalds brisbane north': {'lat': -27.4298, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'mcdonalds perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'mcdonalds adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    'mcdonalds canberra cbd': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'fast_food'},
+    
+    # Hungry Jacks locations
+    'hungry jacks sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'hungry jacks sydney west': {'lat': -33.8688, 'lon': 151.1693, 'state': 'NSW', 'type': 'fast_food'},
+    'hungry jacks melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'hungry jacks melbourne east': {'lat': -37.8136, 'lon': 145.0031, 'state': 'VIC', 'type': 'fast_food'},
+    'hungry jacks brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'hungry jacks perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'hungry jacks adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    'hungry jacks canberra cbd': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'fast_food'},
+    
+    # KFC locations
+    'kfc sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'kfc sydney east': {'lat': -33.8688, 'lon': 151.2493, 'state': 'NSW', 'type': 'fast_food'},
+    'kfc sydney west': {'lat': -33.8688, 'lon': 151.1693, 'state': 'NSW', 'type': 'fast_food'},
+    'kfc melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'kfc melbourne north': {'lat': -37.7736, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'kfc brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'kfc brisbane south': {'lat': -27.5098, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'kfc perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'kfc adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    'kfc canberra cbd': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'fast_food'},
+    
+    # Subway locations
+    'subway sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'subway sydney north': {'lat': -33.8288, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'subway melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'subway brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'subway perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'subway adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    'subway canberra cbd': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'fast_food'},
+    
+    # Domino's Pizza locations
+    'dominos sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'dominos sydney south': {'lat': -33.9088, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'dominos melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'dominos brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'dominos perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'dominos adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    'dominos canberra cbd': {'lat': -35.2809, 'lon': 149.1300, 'state': 'ACT', 'type': 'fast_food'},
+    
+    # Pizza Hut locations
+    'pizza hut sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'pizza hut melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'pizza hut brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'pizza hut perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    'pizza hut adelaide cbd': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'fast_food'},
+    
+    # Nando's locations
+    'nandos sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'nandos melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'nandos brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'nandos perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    
+    # Red Rooster locations
+    'red rooster sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'red rooster sydney west': {'lat': -33.8688, 'lon': 151.1693, 'state': 'NSW', 'type': 'fast_food'},
+    'red rooster melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'red rooster brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'red rooster perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'fast_food'},
+    
+    # Chicken Treat locations
+    'chicken treat sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'chicken treat melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'chicken treat brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    
+    # Taco Bell locations
+    'taco bell sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'taco bell melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'taco bell brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    
+    # Australian Slang Terms for Locations
+    # Fast Food Slang
+    'macca\'s': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'maccas': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'macca\'s sydney': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'maccas sydney': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'macca\'s melbourne': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'maccas melbourne': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'fast_food'},
+    'macca\'s brisbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'maccas brisbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'fast_food'},
+    'hungry jack\'s': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'hungry jacks': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    
+    # Other Australian Venue Slang
+    'servo': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'bottle-o': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'botto': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'milk bar': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'rsl': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'rsl club': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'leagues club': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'bowling club': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'golf club': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    'sports club': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'venue'},
+    
+    # Regional/Location Slang
+    'the bush': {'lat': -32.2569, 'lon': 148.6011, 'state': 'NSW', 'type': 'regional'},
+    'outback': {'lat': -25.0000, 'lon': 135.0000, 'state': 'NT', 'type': 'regional'},
+    'beachie': {'lat': -33.8915, 'lon': 151.2767, 'state': 'NSW', 'type': 'attraction'},
+    'the beach': {'lat': -33.8915, 'lon': 151.2767, 'state': 'NSW', 'type': 'attraction'},
+    
+    # Australian Retail & Supermarket Chains
+    # Grill'd locations (burger chain)
+    'grill\'d': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'grill\'d sydney cbd': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'restaurant'},
+    'grill\'d melbourne cbd': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'restaurant'},
+    'grill\'d brisbane cbd': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'restaurant'},
+    'grill\'d perth cbd': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'restaurant'},
+    
+    # Target locations (department store)
+    'target': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'target sydney': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'target melbourne': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'retail'},
+    'target brisbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'retail'},
+    'target perth': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'retail'},
+    'target adelaide': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'retail'},
+    
+    # Woolworths locations (supermarket)
+    'woolworths': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'woolworth\'s': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'woolies': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'woolworths sydney': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'woolworths melbourne': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'supermarket'},
+    'woolworths brisbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'supermarket'},
+    'woolworths perth': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'supermarket'},
+    'woolworths adelaide': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'supermarket'},
+    
+    # Coles locations (supermarket)
+    'coles': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'coles sydney': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'supermarket'},
+    'coles melbourne': {'lat': -37.8136, 'lon': 144.9631, 'state': 'VIC', 'type': 'supermarket'},
+    'coles brisbane': {'lat': -27.4698, 'lon': 153.0251, 'state': 'QLD', 'type': 'supermarket'},
+    'coles perth': {'lat': -31.9505, 'lon': 115.8605, 'state': 'WA', 'type': 'supermarket'},
+    'coles adelaide': {'lat': -34.9285, 'lon': 138.6007, 'state': 'SA', 'type': 'supermarket'},
+    
+    # Additional Australian Retail Chains
+    'big w': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'kmart': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'bunnings': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'bunnings warehouse': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'officeworks': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'rebel sports': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    'supercheap auto': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'retail'},
+    
+    # Additional Food Chains
+    'subway': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'domino\'s': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
+    'pizza hut': {'lat': -33.8688, 'lon': 151.2093, 'state': 'NSW', 'type': 'fast_food'},
 }
  
 # State abbreviations

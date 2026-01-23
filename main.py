@@ -57,6 +57,7 @@ print(f"Loaded {len(AUSTRALIAN_LOCATIONS)} locations in database")
 
 available: List[tuple[str, LocationExtractionStrategy]] = []
 skipped: List[tuple[str, str]] = []
+allow_online_fallback = True
 
 
 def try_add(name, ctor):
@@ -125,6 +126,7 @@ def run_benchmark(
             overall_pairs = 0
             overall_found_extracted = 0.0
             overall_found_geocoded = 0.0
+            overall_confidence = 0.0
             overall_time = 0.0
 
             for col in text_columns:
@@ -134,6 +136,7 @@ def run_benchmark(
                 t0 = time.perf_counter()
                 found_extracted_total = 0
                 found_geocoded_total = 0
+                found_confidence_total = 0.0
                 texts_with_any_total = 0
 
                 for _ in range(repeats):
@@ -146,9 +149,10 @@ def run_benchmark(
                             extracted = int(bool(matches))
                         found_extracted_total += extracted
                         loc_extractor = LocationExtractor(strategy=strat)
-                        feats = loc_extractor.extract_location_features(txt)
+                        feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                         geocoded = int(feats.get("locations_found", 0))
                         found_geocoded_total += geocoded
+                        found_confidence_total += feats.get("validation_confidence", 0.0)
                         if geocoded > 0:
                             texts_with_any_run += 1
                     texts_with_any_total += texts_with_any_run
@@ -168,6 +172,7 @@ def run_benchmark(
                         "avg_time_s": round(avg_time, 6),
                         "extracted_matches": round(found_extracted_total / repeats, 2),
                         "geocoded_matches": round(found_geocoded_total / repeats, 2),
+                        "avg_confidence": round(found_confidence_total / repeats / n_texts, 4),
                         "texts_with_any": round(avg_texts_with_any, 2),
                         "percent_found": round(percent_found, 4),
                     }
@@ -177,6 +182,7 @@ def run_benchmark(
                 overall_pairs += n_texts
                 overall_found_extracted += found_extracted_total / repeats
                 overall_found_geocoded += found_geocoded_total / repeats
+                overall_confidence += found_confidence_total / repeats
                 overall_time += avg_time
 
             # Add an overall summary row per strategy
@@ -193,6 +199,7 @@ def run_benchmark(
                     "avg_time_s": round(overall_time / max(len(text_columns), 1), 6),
                     "extracted_matches": round(overall_found_extracted, 2),
                     "geocoded_matches": round(overall_found_geocoded, 2),
+                    "avg_confidence": round(overall_confidence / overall_pairs, 4) if overall_pairs else 0.0,
                     "texts_with_any": round(overall_found_geocoded, 2),  # approx
                     "percent_found": round(overall_percent, 4),
                 }
@@ -212,6 +219,7 @@ def run_benchmark(
         t0 = time.perf_counter()
         found_extracted = 0
         found_geocoded = 0
+        found_confidence = 0.0
         texts_with_any_total = 0
         for _ in range(repeats):
             texts_with_any_run = 0
@@ -223,9 +231,10 @@ def run_benchmark(
                     extracted = int(bool(matches))
                 found_extracted += extracted
                 loc_extractor = LocationExtractor(strategy=strat)
-                feats = loc_extractor.extract_location_features(txt)
+                feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                 geocoded = int(feats.get("locations_found", 0))
                 found_geocoded += geocoded
+                found_confidence += feats.get("validation_confidence", 0.0)
                 if geocoded > 0:
                     texts_with_any_run += 1
             texts_with_any_total += texts_with_any_run
@@ -241,6 +250,7 @@ def run_benchmark(
                 "avg_time_s": round(avg_time, 6),
                 "extracted_matches": round(found_extracted / repeats, 2),
                 "geocoded_matches": round(found_geocoded / repeats, 2),
+                "avg_confidence": round(found_confidence / repeats / n_texts, 4),
                 "total_matches": round((found_extracted + found_geocoded) / repeats, 2),
                 "match_rate": round(match_rate, 4),
                 "percent_found_overall": round(percent_found_overall, 4),
@@ -268,7 +278,7 @@ def test_location_extraction(
         for name, strategy in available:
             loc_extractor = LocationExtractor(strategy=strategy)
             for i, txt in enumerate(built_texts):
-                feats = loc_extractor.extract_location_features(txt)
+                feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                 row = dict(feats)
                 row.update(
                     {
@@ -294,7 +304,7 @@ def test_location_extraction(
         chosen_strategy: Optional[str] = None
         for name, strategy in available:
             loc_extractor = LocationExtractor(strategy=strategy)
-            feats = loc_extractor.extract_location_features(txt)
+            feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
             if int(feats.get("locations_found", 0)) > 0:
                 chosen_feats = dict(feats)
                 chosen_strategy = name
@@ -303,7 +313,7 @@ def test_location_extraction(
             if available:
                 name0, strategy0 = available[0]
                 loc_extractor0 = LocationExtractor(strategy=strategy0)
-                chosen_feats = dict(loc_extractor0.extract_location_features(txt))
+                chosen_feats = dict(loc_extractor0.extract_location_features(txt, allow_online_fallback=allow_online_fallback))
                 chosen_strategy = name0
             else:
                 chosen_feats = {}
@@ -409,6 +419,7 @@ def main():
     )
     print("Strategy Benchmark (lower time is better):")
     print(df_bm_all)
+    df_bm_all.to_excel("data/location_extraction_benchmark.xlsx", index=False)
 
     print("Included strategies:", [n for n, _ in available])
     if skipped:
