@@ -117,3 +117,9 @@ webencodings==0.5.1
 websocket-client==1.9.0
 widgetsnbextension==4.0.15
 xlrd==2.0.2
+pydantic==2.9.2
+rapidfuzz==3.14.3
+pyahocorasick==2.3.0
+jellyfish==1.2.1
+pycountry==24.6.1
+spacy==3.8.11

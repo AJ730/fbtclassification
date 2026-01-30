@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "description": "Manual corrections - these ALWAYS override the auto-cache. Edit this file to fix wrong locations.",
+    "version": 1
+  },
+  "overrides": {
+    "skyline luge photos": {
+      "lat": -45.0312,
+      "lon": 168.6626,
+      "state": "NZ",
+      "city": "Queenstown",
+      "country": "New Zealand",
+      "type": "international",
+      "display_name": "Skyline Luge, Queenstown, New Zealand",
+      "reason": "Skyline Luge is in Queenstown NZ"
+    },
+    "keukenhof b v": {
+      "lat": 52.2697,
+      "lon": 4.5462,
+      "state": "NL",
+      "city": "Lisse",
+      "country": "Netherlands",
+      "type": "international",
+      "display_name": "Keukenhof Gardens, Lisse, Netherlands",
+      "reason": "Dutch flower garden"
+    }
+  }
+}
