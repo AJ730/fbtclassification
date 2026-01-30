@@ -184,10 +184,13 @@ class LocationValidator:
         confidence = 0.0
         reasons = []
         
-        # Database match (highest confidence)
+        # Database match (highest confidence) — early return, same as is_valid_location()
         if loc_lower in self.db_keys:
-            confidence = CONFIDENCE_THRESHOLDS['database_match']
-            reasons.append('Found in Australian locations database')
+            return {
+                'is_valid': True,
+                'confidence': CONFIDENCE_THRESHOLDS['database_match'],
+                'reasons': ['Found in Australian locations database'],
+            }
         
         # Check implausible patterns
         if loc_lower in IMPLAUSIBLE_PATTERNS:

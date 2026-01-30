@@ -1,4 +1,5 @@
 from .extractor import LocationExtractor
+from .location_cache import LocationCache
 from .location_db import AUSTRALIAN_LOCATIONS, COUNTRY_ALIASES, STATE_MAPPING, LOCATION_BLACKLIST
 from .location_validator import LocationValidator
 from .feature_calculator import FeatureCalculator
@@ -23,6 +24,7 @@ from .strategies import (
 
 __all__ = [
     "LocationExtractor",
+    "LocationCache",
     "LocationValidator",
     "AUSTRALIAN_LOCATIONS",
     "COUNTRY_ALIASES",

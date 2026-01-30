@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional
-import math
 import numpy as np
 import pandas as pd
 
 from .location_db import AUSTRALIAN_LOCATIONS
+from .location_cache import LocationCache
 from .feature_calculator import FeatureCalculator
 from .location_validator import LocationValidator
 from .strategies import LocationExtractionStrategy, GeocodingStrategy
@@ -24,10 +24,12 @@ class LocationExtractor:
         reference_location: Optional[Dict] = None,
         strategy: Optional[LocationExtractionStrategy] = None,
         geocoding_strategy: Optional[GeocodingStrategy] = None,
+        location_cache: Optional[LocationCache] = None,
     ):
         self.locations_db = AUSTRALIAN_LOCATIONS
         self.reference = reference_location or CONFIG['reference_location']
         self.cache = {}
+        self.location_cache = location_cache
         self.validator = LocationValidator(self.locations_db)
 
         self.strategy = strategy
@@ -74,41 +76,97 @@ class LocationExtractor:
         location_name = location_name.lower().strip()
         if location_name in self.cache:
             return self.cache[location_name]
-        
-        # Try DB first
+
+        # Try persistent cache (overrides + previous lookups)
+        if self.location_cache is not None:
+            cached, confidence = self.location_cache.lookup(location_name)
+            if cached and cached.get("resolved", True):
+                coords = {
+                    'lat': cached['lat'],
+                    'lon': cached['lon'],
+                    'type': cached.get('type', ''),
+                    'state': cached.get('state', ''),
+                }
+                self.cache[location_name] = coords
+                return coords
+            if confidence < 0:
+                # Known unresolvable (sentinel -1.0) — skip DB and API
+                return None
+            # Not in persistent cache — fall through to DB/API
+
+        # Try DB
         loc = self.locations_db.get(location_name)
         if loc:
             coords = {'lat': loc['lat'], 'lon': loc['lon'], 'type': loc.get('type', 'city'), 'state': loc.get('state', '')}
             self.cache[location_name] = coords
+            if self.location_cache is not None:
+                self.location_cache.store(location_name, coords, source="location_db")
             return coords
-        
+
         # Then API
         if self._geocoder:
             coords = self._geocoder.geocode(location_name, context)
             if coords:
                 self.cache[location_name] = coords
+                if self.location_cache is not None:
+                    self.location_cache.store(location_name, coords, source="geocoder")
                 return coords
+
         return None
 
-    def calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        R = 6371
-        lat1_rad = math.radians(lat1)
-        lat2_rad = math.radians(lat2)
-        delta_lat = math.radians(lat2 - lat1)
-        delta_lon = math.radians(lon2 - lon1)
-        a = (math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon/2)**2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return R * c
-
-    def estimate_travel_time(self, distance_km: float, travel_type: str = 'auto') -> float:
-        if distance_km <= 0:
-            return 0
-        if travel_type == 'flight' or distance_km > 500:
-            return (distance_km / 800) + 2
-        elif travel_type == 'car' or distance_km <= 500:
-            return distance_km / 80
+    def _populate_coord_features(
+        self,
+        features: Dict,
+        coords: Dict,
+        location_name: str = '',
+        geocoded_locations: Optional[List[str]] = None,
+    ) -> Dict:
+        """Populate the feature dict from resolved coordinates using FeatureCalculator."""
+        if geocoded_locations:
+            features['locations_found'] = len(geocoded_locations)
+            features['location_names'] = ', '.join(geocoded_locations)
         else:
-            return distance_km / 80
+            features['locations_found'] = 1
+            features['location_names'] = location_name
+
+        features['primary_location'] = (
+            location_name or coords.get('display_name') or coords.get('city', ''))
+        features['primary_lat'] = coords.get('lat', np.nan)
+        features['primary_lon'] = coords.get('lon', np.nan)
+        features['primary_state'] = coords.get('state', '')
+
+        lat = coords.get('lat')
+        lon = coords.get('lon')
+        if lat is not None and lon is not None:
+            distance = self._feature_calc.distance_km(lat, lon)
+            features['distance_from_ref_km'] = round(distance, 2)
+            features['estimated_travel_hours'] = round(
+                self._feature_calc.est_travel_hours(distance), 2)
+
+            loc_type = coords.get('type', '')
+            features['is_international'] = int(loc_type == 'international')
+            features['is_regional'] = int(loc_type == 'regional')
+            features['is_major_city'] = int(loc_type == 'city')
+            features['is_local'] = int(distance <= 100)
+            features['is_remote'] = int(distance > 500)
+            features['is_interstate'] = int(
+                coords.get('state', 'NSW') != 'NSW'
+                and not features['is_international'])
+
+            if features['is_international']:
+                features['travel_category'] = 'international'
+            elif features['is_remote']:
+                features['travel_category'] = 'remote'
+            elif features['is_interstate']:
+                features['travel_category'] = 'interstate'
+            elif features['is_regional']:
+                features['travel_category'] = 'regional'
+            elif features['is_local']:
+                features['travel_category'] = 'local'
+            else:
+                features['travel_category'] = 'domestic'
+
+        return features
 
     def extract_location_features(self, text: str, allow_online_fallback: bool = False) -> Dict:
         """
@@ -141,6 +199,14 @@ class LocationExtractor:
             'is_valid_location': 0,
         }
 
+        # Cache-first: check if the raw text is already resolved in persistent cache
+        if self.location_cache is not None and text and not pd.isna(text):
+            cached, confidence = self.location_cache.lookup(str(text))
+            if cached and cached.get("resolved", True) and confidence > 0:
+                return self._populate_coord_features(features, cached)
+            if confidence < 0:
+                return features  # known unresolvable — skip everything
+
         locations = self.extract_locations(text)
         if not locations:
             return features
@@ -167,52 +233,29 @@ class LocationExtractor:
 
         features['locations_found'] = len(geocoded_locations)
         if not geocoded_locations:
+            # Mark individual failed candidates as unresolvable
+            if self.location_cache is not None and locations:
+                for loc in locations:
+                    self.location_cache.store_unresolvable(loc)
             return features
 
-        features['location_names'] = ', '.join(geocoded_locations)
         primary = geocoded_locations[0]
-        features['primary_location'] = primary
         coords = self.get_coordinates(primary, text)
         if coords:
-            features['primary_lat'] = coords['lat']
-            features['primary_lon'] = coords['lon']
-            features['primary_state'] = coords.get('state', '')
-
+            self._populate_coord_features(
+                features, coords,
+                location_name=primary,
+                geocoded_locations=geocoded_locations,
+            )
             # Add confidence validation for the primary location
             validation_result = self.validator.validate_with_confidence(primary, coords)
             features['validation_confidence'] = validation_result['confidence']
             features['validation_reasons'] = '; '.join(validation_result['reasons'])
             features['is_valid_location'] = int(validation_result['is_valid'])
 
-            loc_type = coords.get('type', '')
-            features['is_international'] = int(loc_type == 'international')
-            features['is_regional'] = int(loc_type == 'regional')
-            features['is_major_city'] = int(loc_type == 'city')
-
-            distance = self.calculate_distance(
-                self.reference['lat'], self.reference['lon'],
-                coords['lat'], coords['lon']
-            )
-            features['distance_from_ref_km'] = round(distance, 2)
-
-            travel_type = 'flight' if distance > 500 or features['is_international'] else 'car'
-            features['estimated_travel_hours'] = round(self.estimate_travel_time(distance, travel_type), 2)
-
-            features['is_local'] = int(distance <= 100)
-            features['is_remote'] = int(distance > 500)
-            features['is_interstate'] = int(coords.get('state', 'NSW') != 'NSW' and not features['is_international'])
-
-            if features['is_international']:
-                features['travel_category'] = 'international'
-            elif features['is_remote']:
-                features['travel_category'] = 'remote'
-            elif features['is_interstate']:
-                features['travel_category'] = 'interstate'
-            elif features['is_regional']:
-                features['travel_category'] = 'regional'
-            elif features['is_local']:
-                features['travel_category'] = 'local'
-            else:
-                features['travel_category'] = 'domestic'
-
         return features
+
+    def save_cache(self) -> None:
+        """Persist the location cache to disk."""
+        if self.location_cache is not None:
+            self.location_cache.save()

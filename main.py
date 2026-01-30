@@ -9,6 +9,7 @@ import pandas as pd
 from location_extraction import (
     AUSTRALIAN_LOCATIONS,
     LocationExtractor,
+    LocationCache,
     LocationExtractionStrategy,
     GazetteerRegexStrategy,
     SklearnBoWStrategy,
@@ -103,6 +104,7 @@ def run_benchmark(
     text_columns: Optional[List[str]] = None,
     sep: str = " ",
     columnwise: bool = False,
+    location_cache: Optional[LocationCache] = None,
 ) -> pd.DataFrame:
     """
     Benchmark extraction strategies. If `columnwise=True` and `dataframe`+`text_columns` provided,
@@ -122,6 +124,8 @@ def run_benchmark(
 
         rows: List[Dict] = []
         for strat_name, strat in available:
+            loc_extractor = LocationExtractor(strategy=strat, location_cache=location_cache)
+
             # Aggregate overall across all columns (row-column pairs)
             overall_pairs = 0
             overall_found_extracted = 0.0
@@ -148,7 +152,6 @@ def run_benchmark(
                         except TypeError:
                             extracted = int(bool(matches))
                         found_extracted_total += extracted
-                        loc_extractor = LocationExtractor(strategy=strat)
                         feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                         geocoded = int(feats.get("locations_found", 0))
                         found_geocoded_total += geocoded
@@ -216,6 +219,7 @@ def run_benchmark(
 
     out_rows: List[Dict] = []
     for name, strat in available:
+        loc_extractor = LocationExtractor(strategy=strat, location_cache=location_cache)
         t0 = time.perf_counter()
         found_extracted = 0
         found_geocoded = 0
@@ -230,7 +234,6 @@ def run_benchmark(
                 except TypeError:
                     extracted = int(bool(matches))
                 found_extracted += extracted
-                loc_extractor = LocationExtractor(strategy=strat)
                 feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                 geocoded = int(feats.get("locations_found", 0))
                 found_geocoded += geocoded
@@ -267,6 +270,7 @@ def test_location_extraction(
     text_columns: Optional[List[str]] = None,
     sep: str = " ",
     per_row_single: bool = False,
+    location_cache: Optional[LocationCache] = None,
 ) -> pd.DataFrame:
     built_texts = _build_texts(
         texts=texts, dataframe=dataframe, text_columns=text_columns, sep=sep
@@ -276,7 +280,7 @@ def test_location_extraction(
     if not per_row_single:
         out_rows: List[Dict] = []
         for name, strategy in available:
-            loc_extractor = LocationExtractor(strategy=strategy)
+            loc_extractor = LocationExtractor(strategy=strategy, location_cache=location_cache)
             for i, txt in enumerate(built_texts):
                 feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
                 row = dict(feats)
@@ -298,13 +302,18 @@ def test_location_extraction(
                 out_rows.append(row)
         return pd.DataFrame(out_rows)
 
+    # Pre-build extractors to reuse across rows (preserves in-memory cache)
+    extractors = {
+        name: LocationExtractor(strategy=strategy, location_cache=location_cache)
+        for name, strategy in available
+    }
+
     out_rows: List[Dict] = []
     for i, txt in enumerate(built_texts):
         chosen_feats: Optional[Dict] = None
         chosen_strategy: Optional[str] = None
         for name, strategy in available:
-            loc_extractor = LocationExtractor(strategy=strategy)
-            feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
+            feats = extractors[name].extract_location_features(txt, allow_online_fallback=allow_online_fallback)
             if int(feats.get("locations_found", 0)) > 0:
                 chosen_feats = dict(feats)
                 chosen_strategy = name
@@ -312,8 +321,7 @@ def test_location_extraction(
         if chosen_feats is None:
             if available:
                 name0, strategy0 = available[0]
-                loc_extractor0 = LocationExtractor(strategy=strategy0)
-                chosen_feats = dict(loc_extractor0.extract_location_features(txt, allow_online_fallback=allow_online_fallback))
+                chosen_feats = dict(extractors[name0].extract_location_features(txt, allow_online_fallback=allow_online_fallback))
                 chosen_strategy = name0
             else:
                 chosen_feats = {}
@@ -410,12 +418,18 @@ def main():
         "CHARGE_DESCRIPTION",
     ]
 
+    # Initialize persistent location cache
+    loc_cache = LocationCache(cache_dir="data")
+    print(f"Location cache loaded: {loc_cache.get_stats()['total_entries']} cached entries, "
+          f"{loc_cache.get_stats()['overrides']} overrides")
+
     df_bm_all = run_benchmark(
         available=available,
         texts=None,
         repeats=5,
         dataframe=df,
         text_columns=text_columns,
+        location_cache=loc_cache,
     )
     print("Strategy Benchmark (lower time is better):")
     print(df_bm_all)
@@ -432,6 +446,7 @@ def main():
         texts=None,
         dataframe=df,
         text_columns=text_columns,
+        location_cache=loc_cache,
     )
     print("Location Extraction Results:")
     print(df_location_features)
@@ -440,6 +455,33 @@ def main():
     df_location_features.to_excel(
         "data/location_features_with_text_columns.xlsx", index=False
     )
+
+    # Persist cache and print summary
+    loc_cache.save()
+
+    stats = loc_cache.get_stats()
+    print("\n=== Location Cache Summary ===")
+    print(f"Total cached entries: {stats['total_entries']}")
+    print(f"  Resolved:   {stats['resolved']}")
+    print(f"  Unresolved: {stats['unresolved']}")
+    print(f"  Overrides:  {stats['overrides']}")
+    print(f"Total lookups: {stats['total_lookups']}")
+    if stats['sources']:
+        print("  Sources:", stats['sources'])
+
+    top = loc_cache.get_top_locations(10)
+    if top:
+        print("\n=== Top 10 Locations (by frequency) ===")
+        for entry in top:
+            name = entry.get("display_name") or entry["key"]
+            print(f"  {name:<45s}  {entry['hit_count']:>4d} hits")
+
+    unresolved = loc_cache.get_unresolved()
+    if unresolved:
+        print(f"\n=== Unresolved Review Queue ({len(unresolved)} entries) ===")
+        print("  Fix the top ones in data/location_overrides.json for maximum impact.")
+        for entry in unresolved[:20]:
+            print(f"  {entry['key']:<45s}  {entry['hit_count']:>4d} hits")
 
 
 if __name__ == "__main__":

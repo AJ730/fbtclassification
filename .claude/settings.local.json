@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(wc:*)",
+      "Bash(conda activate:*)",
+      "Bash(python -c:*)",
+      "Bash(C:Usersamalaanaconda3condabinconda.bat run -n fbt python --version)",
+      "Bash(cmd /c \"C:\\\\Users\\\\amala\\\\anaconda3\\\\condabin\\\\conda.bat run -n fbt python --version\")",
+      "Bash(cmd /c:*)",
+      "Bash(\"C:/Users/amala/anaconda3/envs/fbt/python.exe\" -c:*)",
+      "Bash(\"C:/Users/amala/anaconda3/envs/fbt/python.exe\" \"E:/PycharmProjects/fbtclassification/_analysis_phase1.py\")",
+      "Bash(\"C:/Users/amala/anaconda3/envs/fbt/python.exe\":*)",
+      "Bash(dir:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

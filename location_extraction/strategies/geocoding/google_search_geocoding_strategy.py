@@ -2,6 +2,28 @@ from typing import Any, Dict, List, Optional, Set
 
 from ..base import BaseModel, PrivateAttr
 
+# Country code → name for international locations in the DB.
+# Replaces pycountry (avoids install issues and collision with Australian
+# state codes SA/WA/NT that share ISO 3166-1 alpha-2 namespace).
+_COUNTRY_NAMES: Dict[str, str] = {
+    "AE": "United Arab Emirates",
+    "CN": "China",
+    "HK": "Hong Kong",
+    "ID": "Indonesia",
+    "IN": "India",
+    "JP": "Japan",
+    "NL": "Netherlands",
+    "NZ": "New Zealand",
+    "PH": "Philippines",
+    "SG": "Singapore",
+    "TH": "Thailand",
+    "UK": "United Kingdom",
+    "US": "United States",
+}
+
+# Australian state abbreviations — must NOT be treated as country codes
+_AUSTRALIAN_STATES: Set[str] = {"NSW", "VIC", "QLD", "WA", "SA", "TAS", "NT", "ACT"}
+
 try:  # pydantic v2 config helper
     from pydantic import ConfigDict  # type: ignore
 except Exception:  # pragma: no cover
@@ -43,10 +65,6 @@ class GoogleSearchGeocodingStrategy(BaseModel):  # type: ignore[misc]
             states: Set[str] = set()
             state_tokens: Set[str] = set()
             country_alias_map: Dict[str, str] = {}
-            try:
-                import pycountry  # type: ignore
-            except Exception:
-                pycountry = None  # type: ignore
             if isinstance(self.locations_db, dict):
                 for k, v in self.locations_db.items():
                     if isinstance(k, str) and k:
@@ -56,17 +74,11 @@ class GoogleSearchGeocodingStrategy(BaseModel):  # type: ignore[misc]
                         if isinstance(st, str) and st:
                             st_up = st.upper()
                             states.add(st_up.lower())
-                            if len(st_up) == 2 and st_up.isalpha():
-                                if pycountry is not None:
-                                    c = None
-                                    try:
-                                        c = pycountry.countries.get(alpha_2=st_up)
-                                    except Exception:
-                                        c = None
-                                    if c and getattr(c, "name", None):
-                                        country_alias_map[st_up] = c.name
-                                if st_up == "UK":
-                                    country_alias_map["UK"] = "United Kingdom"
+                            if (len(st_up) <= 3 and st_up.isalpha()
+                                    and st_up not in _AUSTRALIAN_STATES):
+                                name = _COUNTRY_NAMES.get(st_up)
+                                if name:
+                                    country_alias_map[st_up] = name
             try:
                 from ...location_db import STATE_MAPPING  # type: ignore
                 for tok in STATE_MAPPING.keys():
