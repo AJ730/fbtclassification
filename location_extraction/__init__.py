@@ -47,4 +47,7 @@ __all__ = [
     "NltkNerStrategy",
     "SpacyNerStrategy",
     "TorchBertNerStrategy",
+    "EnsembleExtractionStrategy"
 ]
+
+from .strategies.extraction.ensemble_strategy import EnsembleExtractionStrategy

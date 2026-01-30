@@ -103,14 +103,13 @@ class LocationCache:
     # ------------------------------------------------------------------
     # Fuzzy helpers
     # ------------------------------------------------------------------
-
     def _fuzzy_search_overrides(self, key: str) -> Tuple[Optional[dict], float]:
         """Fuzzy match against override keys. Returns (data, score) or (None, 0)."""
         if not self._override_keys:
             return None, 0.0
         results = process.extract(
-            key,
-            self._override_keys,
+            key,  # positional, not query=
+            self._override_keys,  # positional, not choices=
             scorer=fuzz.token_sort_ratio,
             limit=5,
         )
@@ -129,8 +128,8 @@ class LocationCache:
         if not self._cache_keys:
             return None, 0.0
         results = process.extract(
-            key,
-            self._cache_keys,
+            key,  # positional, not query=
+            self._cache_keys,  # positional, not choices=
             scorer=fuzz.token_sort_ratio,
             limit=10,
         )

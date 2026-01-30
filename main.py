@@ -1,488 +1,305 @@
-# Standard library imports
-import time
-from typing import List, Dict, Tuple, Optional, Sequence
+"""
+Location Extraction Pipeline - Simplified Runner
 
-# Third-party imports
+This script extracts locations from text data using the EnsembleExtractionStrategy,
+which combines multiple extraction methods with intelligent fallbacks.
+
+Usage:
+    python main.py                          # Run with default settings
+    python main.py --input data.xlsx        # Specify input file
+    python main.py --demo                   # Run demo with sample data
+    python main.py --benchmark              # Run benchmark comparison
+"""
+
+import argparse
+import time
+from pathlib import Path
+from typing import List
+
 import pandas as pd
 
 # Local imports
-from location_extraction import (
-    AUSTRALIAN_LOCATIONS,
-    LocationExtractor,
-    LocationCache,
-    LocationExtractionStrategy,
-    GazetteerRegexStrategy,
-    SklearnBoWStrategy,
-    SklearnTfidfStrategy,
-    AhoCorasickStrategy,
-    PhoneticGazetteerStrategy,
-    SpacyNerStrategy,
-)
+from location_extraction import (AhoCorasickStrategy, AUSTRALIAN_LOCATIONS, GazetteerRegexStrategy)
+from location_extraction.strategies.extraction.ensemble_strategy import EnsembleExtractionStrategy
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-CONFIG = {
-    # File paths
-    "raw_data_path": "data/data_raw_2024-25.xlsx",
-    "wp_files": [
-        "data/WP_1_Apr_to_Dec_24_FBT_ent_acc.xlsx",
-        "data/WP_2_Apr_to_Dec_24_FBT_ent_acc.xlsx",
-        "data/WP_3_Jan_to_Mar_25_FBT_ent_acc.xlsx",
-        "data/WP_4_Jan_to_Mar_25_FBT_ent_acc.xlsx",
-    ],
-    # Classification mode: 'supervised' or 'unsupervised'
-    "mode": "supervised",
-    # Enable/disable features
-    "enable_clustering": True,
-    # Clustering settings
-    "n_clusters": 8,
-    # Model training
-    "test_size": 0.2,
-    "random_state": 42,
-    "cv_folds": 5,
-    # Text vectorization
-    "max_features": 5000,
-    "ngram_range": (1, 3),
-    "min_df": 2,
-    "max_df": 0.95,
-    # Output paths
-    "model_output": "fbt_classifier_pipeline.joblib",
-    "encoder_output": "fbt_label_encoder.joblib",
-    "predictions_output": "fbt_predictions.csv",
-}
-
-print("All imports successful")
-print(f"Loaded {len(AUSTRALIAN_LOCATIONS)} locations in database")
-
-available: List[tuple[str, LocationExtractionStrategy]] = []
-skipped: List[tuple[str, str]] = []
-allow_online_fallback = True
-
-
-def try_add(name, ctor):
-    try:
-        s = ctor()
-        available.append((name, s))
-    except Exception as e:
-        skipped.append((name, str(e)))
-
-
-def _build_texts(
-    *,
-    texts: Optional[Sequence] = None,
-    dataframe: Optional[pd.DataFrame] = None,
-    text_columns: Optional[List[str]] = None,
-    sep: str = " ",
-) -> List[str]:
-    if texts is not None:
-        return ["" if pd.isna(t) else str(t) for t in texts]
-    if dataframe is None or not text_columns:
-        raise ValueError("Provide either `texts` or (`dataframe` and `text_columns`).")
-    missing = [c for c in text_columns if c not in dataframe.columns]
-    if missing:
-        raise ValueError(f"Missing columns in dataframe: {missing}")
-
-    def _join_row(row: pd.Series) -> str:
-        parts = [str(v).strip() for v in row.values if pd.notna(v) and str(v).strip()]
-        return sep.join(parts)
-
-    return dataframe[text_columns].apply(_join_row, axis=1).tolist()
-
-
-def _build_texts_column(df: pd.DataFrame, column: str) -> List[str]:
-    vals = df[column].tolist()
-    return ["" if pd.isna(v) else str(v) for v in vals]
-
-
-def run_benchmark(
-    available: List[Tuple[str, LocationExtractionStrategy]],
-    texts: Optional[Sequence[str]] = None,
-    repeats: int = 5,
-    dataframe: Optional[pd.DataFrame] = None,
-    text_columns: Optional[List[str]] = None,
-    sep: str = " ",
-    columnwise: bool = False,
-    location_cache: Optional[LocationCache] = None,
-) -> pd.DataFrame:
-    """
-    Benchmark extraction strategies. If `columnwise=True` and `dataframe`+`text_columns` provided,
-    computes found/not-found per column and percent of columns found.
-
-    Default behavior (columnwise=False) reports overall totals and percent across all input texts.
-    """
-    if columnwise:
-        if dataframe is None or not text_columns:
-            raise ValueError(
-                "For columnwise mode, provide `dataframe` and `text_columns`."
-            )
-        # Validate columns
-        miss = [c for c in text_columns if c not in dataframe.columns]
-        if miss:
-            raise ValueError(f"Missing columns in dataframe: {miss}")
-
-        rows: List[Dict] = []
-        for strat_name, strat in available:
-            loc_extractor = LocationExtractor(strategy=strat, location_cache=location_cache)
-
-            # Aggregate overall across all columns (row-column pairs)
-            overall_pairs = 0
-            overall_found_extracted = 0.0
-            overall_found_geocoded = 0.0
-            overall_confidence = 0.0
-            overall_time = 0.0
-
-            for col in text_columns:
-                built_texts = _build_texts_column(dataframe, col)
-                n_texts = len(built_texts)
-
-                t0 = time.perf_counter()
-                found_extracted_total = 0
-                found_geocoded_total = 0
-                found_confidence_total = 0.0
-                texts_with_any_total = 0
-
-                for _ in range(repeats):
-                    texts_with_any_run = 0
-                    for txt in built_texts:
-                        matches = strat.extract(txt)
-                        try:
-                            extracted = len(matches)
-                        except TypeError:
-                            extracted = int(bool(matches))
-                        found_extracted_total += extracted
-                        feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
-                        geocoded = int(feats.get("locations_found", 0))
-                        found_geocoded_total += geocoded
-                        found_confidence_total += feats.get("validation_confidence", 0.0)
-                        if geocoded > 0:
-                            texts_with_any_run += 1
-                    texts_with_any_total += texts_with_any_run
-                avg_time = (time.perf_counter() - t0) / repeats
-
-                # Percent of rows in this column with any match per run (average)
-                avg_texts_with_any = texts_with_any_total / repeats
-                percent_found = (
-                    ((avg_texts_with_any / n_texts) * 100) if n_texts else 0.0
-                )
-
-                rows.append(
-                    {
-                        "strategy": strat_name,
-                        "column": col,
-                        "texts": n_texts,
-                        "avg_time_s": round(avg_time, 6),
-                        "extracted_matches": round(found_extracted_total / repeats, 2),
-                        "geocoded_matches": round(found_geocoded_total / repeats, 2),
-                        "avg_confidence": round(found_confidence_total / repeats / n_texts, 4),
-                        "texts_with_any": round(avg_texts_with_any, 2),
-                        "percent_found": round(percent_found, 4),
-                    }
-                )
-
-                # Update overall aggregates
-                overall_pairs += n_texts
-                overall_found_extracted += found_extracted_total / repeats
-                overall_found_geocoded += found_geocoded_total / repeats
-                overall_confidence += found_confidence_total / repeats
-                overall_time += avg_time
-
-            # Add an overall summary row per strategy
-            overall_percent = (
-                ((overall_found_geocoded / overall_pairs) * 100)
-                if overall_pairs
-                else 0.0
-            )
-            rows.append(
-                {
-                    "strategy": strat_name,
-                    "column": "ALL",
-                    "texts": int(overall_pairs),
-                    "avg_time_s": round(overall_time / max(len(text_columns), 1), 6),
-                    "extracted_matches": round(overall_found_extracted, 2),
-                    "geocoded_matches": round(overall_found_geocoded, 2),
-                    "avg_confidence": round(overall_confidence / overall_pairs, 4) if overall_pairs else 0.0,
-                    "texts_with_any": round(overall_found_geocoded, 2),  # approx
-                    "percent_found": round(overall_percent, 4),
-                }
-            )
-
-        return pd.DataFrame(rows)
-
-    # Fallback: existing behavior combining columns/texts
-    built_texts = _build_texts(
-        texts=texts, dataframe=dataframe, text_columns=text_columns, sep=sep
-    )
-
-    n_texts = len(built_texts)
-
-    out_rows: List[Dict] = []
-    for name, strat in available:
-        loc_extractor = LocationExtractor(strategy=strat, location_cache=location_cache)
-        t0 = time.perf_counter()
-        found_extracted = 0
-        found_geocoded = 0
-        found_confidence = 0.0
-        texts_with_any_total = 0
-        for _ in range(repeats):
-            texts_with_any_run = 0
-            for txt in built_texts:
-                matches = strat.extract(txt)
-                try:
-                    extracted = len(matches)
-                except TypeError:
-                    extracted = int(bool(matches))
-                found_extracted += extracted
-                feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
-                geocoded = int(feats.get("locations_found", 0))
-                found_geocoded += geocoded
-                found_confidence += feats.get("validation_confidence", 0.0)
-                if geocoded > 0:
-                    texts_with_any_run += 1
-            texts_with_any_total += texts_with_any_run
-        avg_time = (time.perf_counter() - t0) / repeats
-        avg_texts_with_any = texts_with_any_total / repeats
-        match_rate = (avg_texts_with_any / n_texts) if n_texts else 0.0
-        percent_found_overall = match_rate * 100
-        out_rows.append(
-            {
-                "strategy": name,
-                "mode": "extract+geocode",
-                "texts": n_texts,
-                "avg_time_s": round(avg_time, 6),
-                "extracted_matches": round(found_extracted / repeats, 2),
-                "geocoded_matches": round(found_geocoded / repeats, 2),
-                "avg_confidence": round(found_confidence / repeats / n_texts, 4),
-                "total_matches": round((found_extracted + found_geocoded) / repeats, 2),
-                "match_rate": round(match_rate, 4),
-                "percent_found_overall": round(percent_found_overall, 4),
-            }
-        )
-
-    return pd.DataFrame(out_rows)
-
-
-def test_location_extraction(
-    available: List[Tuple[str, LocationExtractionStrategy]],
-    texts: Optional[Sequence[str]] = None,
-    dataframe: Optional[pd.DataFrame] = None,
-    text_columns: Optional[List[str]] = None,
-    sep: str = " ",
-    per_row_single: bool = False,
-    location_cache: Optional[LocationCache] = None,
-) -> pd.DataFrame:
-    built_texts = _build_texts(
-        texts=texts, dataframe=dataframe, text_columns=text_columns, sep=sep
-    )
-    used_cols = text_columns or []
-
-    if not per_row_single:
-        out_rows: List[Dict] = []
-        for name, strategy in available:
-            loc_extractor = LocationExtractor(strategy=strategy, location_cache=location_cache)
-            for i, txt in enumerate(built_texts):
-                feats = loc_extractor.extract_location_features(txt, allow_online_fallback=allow_online_fallback)
-                row = dict(feats)
-                row.update(
-                    {
-                        "row_index": i,
-                        "strategy": name,
-                    }
-                )
-                # Attach original column values per row when dataframe is provided
-                if dataframe is not None and used_cols:
-                    try:
-                        src = dataframe.iloc[i]
-                        for c in used_cols:
-                            row[c] = src.get(c, None)
-                    except Exception:
-                        for c in used_cols:
-                            row[c] = None
-                out_rows.append(row)
-        return pd.DataFrame(out_rows)
-
-    # Pre-build extractors to reuse across rows (preserves in-memory cache)
-    extractors = {
-        name: LocationExtractor(strategy=strategy, location_cache=location_cache)
-        for name, strategy in available
-    }
-
-    out_rows: List[Dict] = []
-    for i, txt in enumerate(built_texts):
-        chosen_feats: Optional[Dict] = None
-        chosen_strategy: Optional[str] = None
-        for name, strategy in available:
-            feats = extractors[name].extract_location_features(txt, allow_online_fallback=allow_online_fallback)
-            if int(feats.get("locations_found", 0)) > 0:
-                chosen_feats = dict(feats)
-                chosen_strategy = name
-                break
-        if chosen_feats is None:
-            if available:
-                name0, strategy0 = available[0]
-                chosen_feats = dict(extractors[name0].extract_location_features(txt, allow_online_fallback=allow_online_fallback))
-                chosen_strategy = name0
-            else:
-                chosen_feats = {}
-                chosen_strategy = None
-        row = dict(chosen_feats)
-        row.update(
-            {
-                "row_index": i,
-                "selected_strategy": chosen_strategy,
-            }
-        )
-        if dataframe is not None and used_cols:
-            try:
-                src = dataframe.iloc[i]
-                for c in used_cols:
-                    row[c] = src.get(c, None)
-            except Exception:
-                for c in used_cols:
-                    row[c] = None
-        out_rows.append(row)
-
-    return pd.DataFrame(out_rows)
-
-try_add(
-    "Gazetteer Regex",
-    lambda: GazetteerRegexStrategy(locations_db=AUSTRALIAN_LOCATIONS),
-)
-
-try_add(
-    "Sklearn BoW",
-    lambda: SklearnBoWStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,
-        ngram_range=(1, 3),
-        min_df=1,
-        max_df=0.9,
-        max_features=5000,
-    ),
-)
-
-try_add(
-    "Sklearn TF-IDF",
-    lambda: SklearnTfidfStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,
-        ngram_range=(1, 3),
-        min_df=1,
-        max_df=0.9,
-        max_features=5000,
-    ),
-)
-
-try_add(
-    "Aho-Corasick",
-    lambda: AhoCorasickStrategy(locations_db=AUSTRALIAN_LOCATIONS),
-)
-
-try_add(
-    "Phonetic Gazetteer",
-    lambda: PhoneticGazetteerStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,
-        distance_threshold=3,  # Increased from 2 for more matches
-    ),
-)
-
-try_add(
-    "SpacyNER (Small Model)",
-    lambda: SpacyNerStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,  # Reverted to filter to known Australian locations
-        model_name="en_core_web_sm",
-        models_preference=[
-            "en_core_web_sm",
-        ],
-    ),
-)
-
-try_add(
-    "SpacyNER (Transformer Pipeline Model)",
-    lambda: SpacyNerStrategy(
-        locations_db=AUSTRALIAN_LOCATIONS,  # Reverted to filter to known Australian locations
-        model_name="en_core_web_trf",
-        models_preference=[
-            "en_core_web_trf",
-        ],
-    ),
-)
-
-def main():
-    # Read data from excel files
-    df = pd.read_excel(CONFIG["raw_data_path"])
-    text_columns = [
+DEFAULT_CONFIG = {
+    "input_file": "data/data_raw_2024-25.xlsx",
+    "output_file": "data/location_results.xlsx",
+    "text_columns": [
         "LINE_DESCR",
         "PURPOSE",
         "INVOICE_DESCR",
         "VENDOR_NAME",
         "CHARGE_DESCRIPTION",
+    ],
+    # Ensemble strategy settings
+    "enable_aho_corasick": True,
+    "enable_regex": True,
+    "enable_spacy": True,
+    "enable_phonetic": True,
+    "enable_tfidf": False,  # Expensive, disabled by default
+}
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def combine_text_columns(df: pd.DataFrame, columns: List[str], sep: str = " ") -> pd.Series:
+    """Combine multiple text columns into a single string per row."""
+    available_cols = [c for c in columns if c in df.columns]
+    if not available_cols:
+        raise ValueError(f"None of the columns {columns} found in dataframe")
+
+    def join_row(row):
+        parts = [str(v).strip() for v in row if pd.notna(v) and str(v).strip()]
+        return sep.join(parts)
+
+    return df[available_cols].apply(join_row, axis=1)
+
+
+def extract_locations_from_dataframe(
+        df: pd.DataFrame,
+        strategy: EnsembleExtractionStrategy,
+        text_columns: List[str],
+        verbose: bool = True,
+) -> pd.DataFrame:
+    """
+    Extract locations from a dataframe and return results.
+    """
+    combined_text = combine_text_columns(df, text_columns)
+    results = []
+    total = len(combined_text)
+
+    if verbose:
+        print(f"Processing {total} rows...")
+
+    start_time = time.time()
+
+    for i, text in enumerate(combined_text):
+        extraction = strategy.extract_with_confidence(text)
+
+        if extraction:
+            best = extraction[0]
+            result = {
+                "row_index": i,
+                "combined_text": text[:200] + "..." if len(text) > 200 else text,
+                "location_found": best["location"],
+                "confidence": best["confidence"],
+                "sources": ", ".join(best["sources"]),
+                "in_database": best["in_database"],
+                "all_locations": ", ".join([e["location"] for e in extraction]),
+                "num_locations": len(extraction),
+            }
+        else:
+            result = {
+                "row_index": i,
+                "combined_text": text[:200] + "..." if len(text) > 200 else text,
+                "location_found": None,
+                "confidence": 0.0,
+                "sources": "",
+                "in_database": False,
+                "all_locations": "",
+                "num_locations": 0,
+            }
+
+        results.append(result)
+
+        if verbose and (i + 1) % 100 == 0:
+            elapsed = time.time() - start_time
+            rate = (i + 1) / elapsed
+            remaining = (total - i - 1) / rate if rate > 0 else 0
+            print(f"  Processed {i + 1}/{total} ({100 * (i + 1) / total:.1f}%) - ETA: {remaining:.0f}s")
+
+    elapsed = time.time() - start_time
+    if verbose:
+        print(f"Completed in {elapsed:.1f}s ({total / elapsed:.1f} rows/sec)")
+
+    results_df = pd.DataFrame(results)
+
+    for col in text_columns:
+        if col in df.columns:
+            results_df[col] = df[col].values
+
+    return results_df
+
+
+def run_demo():
+    """Run a demo with sample data."""
+    print("=" * 60)
+    print("LOCATION EXTRACTION DEMO")
+    print("=" * 60)
+
+    sample_texts = [
+        "Client dinner at Crown Sydney with partners",
+        "Flight to Melbourne for conference",
+        "Team meeting in Brisbane CBD",
+        "Taxi from Sydney airport to hotel",
+        "Business lunch at Thai restaurant",
+        "Conference in Cairns next week",
+        "Travel to Perth for client meeting",
+        "Meeting in Sydny office",  # Typo
+        "Flight to Singapore via Brisbane",
+        "Client visit to Alice Springs",
     ]
 
-    # Initialize persistent location cache
-    loc_cache = LocationCache(cache_dir="data")
-    print(f"Location cache loaded: {loc_cache.get_stats()['total_entries']} cached entries, "
-          f"{loc_cache.get_stats()['overrides']} overrides")
-
-    df_bm_all = run_benchmark(
-        available=available,
-        texts=None,
-        repeats=5,
-        dataframe=df,
-        text_columns=text_columns,
-        location_cache=loc_cache,
-    )
-    print("Strategy Benchmark (lower time is better):")
-    print(df_bm_all)
-    df_bm_all.to_excel("data/location_extraction_benchmark.xlsx", index=False)
-
-    print("Included strategies:", [n for n, _ in available])
-    if skipped:
-        print("Skipped strategies (reason):")
-        for n, r in skipped:
-            print(" -", n, "->", r)
-
-    df_location_features = test_location_extraction(
-        available=available,
-        texts=None,
-        dataframe=df,
-        text_columns=text_columns,
-        location_cache=loc_cache,
-    )
-    print("Location Extraction Results:")
-    print(df_location_features)
-
-    # Store in excel file with text columns and strategy info
-    df_location_features.to_excel(
-        "data/location_features_with_text_columns.xlsx", index=False
+    print("\nInitializing EnsembleExtractionStrategy...")
+    strategy = EnsembleExtractionStrategy(
+        locations_db=AUSTRALIAN_LOCATIONS,
+        enable_aho_corasick=True,
+        enable_regex=True,
+        enable_spacy=True,
+        enable_phonetic=True,
     )
 
-    # Persist cache and print summary
-    loc_cache.save()
+    print(f"Strategy status: {strategy.get_strategy_status()}")
+    print(f"Locations database: {len(AUSTRALIAN_LOCATIONS)} entries")
 
-    stats = loc_cache.get_stats()
-    print("\n=== Location Cache Summary ===")
-    print(f"Total cached entries: {stats['total_entries']}")
-    print(f"  Resolved:   {stats['resolved']}")
-    print(f"  Unresolved: {stats['unresolved']}")
-    print(f"  Overrides:  {stats['overrides']}")
-    print(f"Total lookups: {stats['total_lookups']}")
-    if stats['sources']:
-        print("  Sources:", stats['sources'])
+    print("\n" + "-" * 60)
+    print("EXTRACTION RESULTS")
+    print("-" * 60)
 
-    top = loc_cache.get_top_locations(10)
-    if top:
-        print("\n=== Top 10 Locations (by frequency) ===")
-        for entry in top:
-            name = entry.get("display_name") or entry["key"]
-            print(f"  {name:<45s}  {entry['hit_count']:>4d} hits")
+    for text in sample_texts:
+        results = strategy.extract_with_confidence(text)
 
-    unresolved = loc_cache.get_unresolved()
-    if unresolved:
-        print(f"\n=== Unresolved Review Queue ({len(unresolved)} entries) ===")
-        print("  Fix the top ones in data/location_overrides.json for maximum impact.")
-        for entry in unresolved[:20]:
-            print(f"  {entry['key']:<45s}  {entry['hit_count']:>4d} hits")
+        if results:
+            best = results[0]
+            print(f"\nText: {text}")
+            print(f"  → Location: {best['location']} (conf: {best['confidence']:.2f})")
+            print(f"  → Sources: {', '.join(best['sources'])}")
+        else:
+            print(f"\nText: {text}")
+            print(f"  → No location found")
+
+    found = sum(1 for t in sample_texts if strategy.extract(t))
+    print("\n" + "-" * 60)
+    print(f"SUMMARY: Found locations in {found}/{len(sample_texts)} texts ({100 * found / len(sample_texts):.1f}%)")
+
+
+def run_benchmark():
+    """Run benchmark comparing strategies."""
+    print("=" * 60)
+    print("STRATEGY BENCHMARK")
+    print("=" * 60)
+
+    test_texts = [
+                     "Meeting in Sydney CBD tomorrow",
+                     "Flight to Melbourne for conference",
+                     "Client dinner at Crown Brisbane",
+                     "Travel to Perth next week",
+                     "Sydny office meeting",  # Typo
+                 ] * 20
+
+    strategies = [
+        ("Ensemble (Full)", EnsembleExtractionStrategy(
+            locations_db=AUSTRALIAN_LOCATIONS,
+            enable_aho_corasick=True, enable_regex=True,
+            enable_spacy=True, enable_phonetic=True,
+        )),
+        ("Ensemble (Fast)", EnsembleExtractionStrategy(
+            locations_db=AUSTRALIAN_LOCATIONS,
+            enable_aho_corasick=True, enable_regex=True,
+            enable_spacy=False, enable_phonetic=False,
+        )),
+        ("Aho-Corasick", AhoCorasickStrategy(locations_db=AUSTRALIAN_LOCATIONS)),
+        ("Regex", GazetteerRegexStrategy(locations_db=AUSTRALIAN_LOCATIONS)),
+    ]
+
+    results = []
+    for name, strategy in strategies:
+        print(f"\nBenchmarking: {name}...")
+
+        start = time.time()
+        found = sum(1 for t in test_texts if strategy.extract(t))
+        elapsed = time.time() - start
+
+        results.append({
+            "Strategy": name,
+            "Time (s)": round(elapsed, 3),
+            "Texts/sec": round(len(test_texts) / elapsed, 1),
+            "Found": found,
+            "Rate": f"{100 * found / len(test_texts):.1f}%",
+        })
+
+    print("\n" + "=" * 60)
+    df = pd.DataFrame(results)
+    print(df.to_string(index=False))
+    return df
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Location Extraction Pipeline")
+    parser.add_argument("--demo", action="store_true", help="Run demo")
+    parser.add_argument("--benchmark", action="store_true", help="Run benchmark")
+    parser.add_argument("-i", "--input", type=str, help="Input Excel file")
+    parser.add_argument("-o", "--output", type=str, help="Output Excel file")
+    parser.add_argument("--columns", type=str, help="Comma-separated text columns")
+    parser.add_argument("--no-spacy", action="store_true", help="Disable spaCy")
+    parser.add_argument("-q", "--quiet", action="store_true", help="Quiet mode")
+
+    args = parser.parse_args()
+
+    if args.demo:
+        run_demo()
+        return
+
+    if args.benchmark:
+        run_benchmark()
+        return
+
+    # File processing mode
+    input_file = args.input or DEFAULT_CONFIG["input_file"]
+    output_file = args.output or DEFAULT_CONFIG["output_file"]
+    text_columns = args.columns.split(",") if args.columns else DEFAULT_CONFIG["text_columns"]
+
+    if not Path(input_file).exists():
+        print(f"Error: Input file not found: {input_file}")
+        print("Try: python main.py --demo")
+        return
+
+    df = pd.read_excel(input_file)
+    print(f"Loaded {len(df)} rows from {input_file}")
+
+    strategy = EnsembleExtractionStrategy(
+        locations_db=AUSTRALIAN_LOCATIONS,
+        enable_spacy=not args.no_spacy,
+    )
+
+    results_df = extract_locations_from_dataframe(df, strategy, text_columns, not args.quiet)
+
+    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+    results_df.to_excel(output_file, index=False)
+
+    found = results_df["location_found"].notna().sum()
+    print(f"\nResults: {found}/{len(results_df)} locations found ({100 * found / len(results_df):.1f}%)")
+    print(f"Saved to: {output_file}")
 
 
 if __name__ == "__main__":
-    main()
+    from location_extraction import AUSTRALIAN_LOCATIONS, EnsembleExtractionStrategy
+
+    # Create the ensemble strategy (recommended)
+    strategy = EnsembleExtractionStrategy(
+        locations_db=AUSTRALIAN_LOCATIONS,
+        enable_aho_corasick=True,  # Fast exact matching
+        enable_regex=True,  # Pattern matching
+        enable_spacy=True,  # NER extraction
+        enable_phonetic=True,  # Typo tolerance
+        enable_tfidf=True,  # Expensive, disable unless needed
+    )
+
+    # Simple extraction
+    locations = strategy.extract("Meeting in Sydney tomorrow")
+    # Returns: ['sydney']
+
+    # Extraction with confidence scores
+    results = strategy.extract_with_confidence("Flight from Sydny to Melborne")
+    # Returns: [{'location': 'sydney', 'confidence': 0.85, 'sources': ['phonetic', 'aho_corasick'], ...}]
+
+    # Get single best match
+    best = strategy.extract_best("Conference in Brisbane", min_confidence=0.3)
+    # Returns: 'brisbane'

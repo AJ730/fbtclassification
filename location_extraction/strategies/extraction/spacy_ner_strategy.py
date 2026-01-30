@@ -2,9 +2,6 @@ import re
 import importlib.util
 from typing import Dict, List, Optional, Set, Any
 
-import spacy
-from spacy.util import is_package
-
 from ..base import BaseModel, PrivateAttr
 from .country_detector import CountryDetector
 
@@ -24,24 +21,51 @@ class SpacyNerStrategy(BaseModel):  # type: ignore[misc]
         self._keys = {k.lower() for k in self.locations_db.keys()}
         self._nlp = self._load_spacy_pipeline()
         self._country = CountryDetector()
-        try:
-            from ...location_db import LOCATION_BLACKLIST  # type: ignore
-            self._blacklist = set(LOCATION_BLACKLIST)
-        except Exception:
-            self._blacklist = set()
+        self._blacklist = {
+            'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+            'saturday', 'sunday', 'january', 'february', 'march',
+            'april', 'may', 'june', 'july', 'august', 'september',
+            'october', 'november', 'december', 'at', 'to', 'from',
+            'in', 'on', 'for', 'with', 'the', 'a', 'an', 'pty', 'ltd',
+        }
 
     def _load_spacy_pipeline(self):
+        """Load spaCy model from local cache (location_extraction/models/) or system."""
+        try:
+            import spacy
+            from spacy.util import is_package
+        except ImportError as e:
+            raise ImportError("spacy is required for SpacyNerStrategy") from e
+        
         prefs = list(self.models_preference or [])
         if self.model and self.model not in prefs:
             prefs.insert(0, self.model)
         if not prefs:
             prefs = [
-                "en_core_web_trf",
-                "en_core_web_lg",
-                "en_core_web_md",
                 "en_core_web_sm",
-                "xx_ent_wiki_sm",
+                "en_core_web_md",
+                "en_core_web_lg",
+                "en_core_web_trf",
             ]
+        
+        # Try to load from local cache first: location_extraction/models/{model_name}/
+        try:
+            from pathlib import Path
+            # Go up from extraction/ -> strategies/ -> location_extraction/ -> models/
+            models_dir = Path(__file__).parent.parent.parent / "models"
+            
+            for model_name in prefs:
+                model_path = models_dir / model_name
+                if model_path.exists() and (model_path / "meta.json").exists():
+                    try:
+                        nlp = spacy.load(model_path)
+                        return nlp
+                    except Exception:
+                        continue
+        except Exception:
+            pass  # Local cache not available
+        
+        # Fallback to system-installed models
         for m in prefs:
             available = False
             if is_package(m):
@@ -50,9 +74,13 @@ class SpacyNerStrategy(BaseModel):  # type: ignore[misc]
                 available = True
             if available:
                 return spacy.load(m)
+        
         raise ImportError(
             "Failed to load any spaCy model. Tried: " + ", ".join(prefs) +
-            "\nInstall one, e.g.: python -m spacy download en_core_web_sm"
+            "\n\nTo download model to local cache, run:" +
+            "\n  python download_model.py" +
+            "\n\nOr install system-wide:" +
+            "\n  python -m spacy download en_core_web_sm"
         )
 
     def _normalize_text(self, text: str) -> str:
@@ -71,7 +99,7 @@ class SpacyNerStrategy(BaseModel):  # type: ignore[misc]
 
     def _extract_from_doc(self, doc) -> List[str]:
         cand: List[str] = []
-        nlp = self._nlp  # type: ignore[assignment]
+        nlp = self._nlp
         bl = self._blacklist or set()
         for ent in doc.ents:
             word = ent.text.strip()
@@ -93,15 +121,15 @@ class SpacyNerStrategy(BaseModel):  # type: ignore[misc]
     def extract(self, text: str) -> List[str]:
         if not text or self._nlp is None:
             return []
-        nlp = self._nlp  # type: ignore[assignment]
-        doc = nlp(text)  # type: ignore[operator]
+        nlp = self._nlp
+        doc = nlp(text)
         cand = self._extract_from_doc(doc)
 
         if len(cand) < 2:
             norm = self._normalize_text(text)
             if norm != text:
                 try:
-                    cand2 = self._extract_from_doc(nlp(norm))  # type: ignore[operator]
+                    cand2 = self._extract_from_doc(nlp(norm))
                     seen: Set[str] = set()
                     merged: List[str] = []
                     for w in cand + cand2:

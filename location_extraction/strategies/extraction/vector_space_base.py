@@ -1,6 +1,6 @@
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
-from location_extraction.strategies.base import BaseModel, PrivateAttr
+from ..base import BaseModel, PrivateAttr
 
 
 class VectorSpaceGazetteerStrategy(BaseModel):  # type: ignore[misc]
@@ -8,6 +8,7 @@ class VectorSpaceGazetteerStrategy(BaseModel):  # type: ignore[misc]
     vectorizer_type: Literal["count", "tfidf"] = "tfidf"
     ngram_range: Tuple[int, int] = (1, 3)
     min_df: int = 1
+    max_df: Union[int, float] = 0.9  # Can be int (count) or float (proportion)
     max_features: Optional[int] = None
     threshold: float = 0.2
 
@@ -19,17 +20,26 @@ class VectorSpaceGazetteerStrategy(BaseModel):  # type: ignore[misc]
         super().__init__(**data)
         try:
             from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer  # type: ignore
-            from sklearn.metrics.pairwise import cosine_similarity  # noqa: F401
         except Exception as e:  # pragma: no cover
             raise ImportError("scikit-learn is required for VectorSpace strategies") from e
 
         docs = sorted(self.locations_db.keys(), key=len, reverse=True)
         self._names = docs
+
         if self.vectorizer_type == "count":
-            vec = CountVectorizer(ngram_range=self.ngram_range, min_df=self.min_df, max_features=self.max_features)
+            vec = CountVectorizer(
+                ngram_range=self.ngram_range,
+                min_df=self.min_df,
+                max_df=self.max_df,
+                max_features=self.max_features,
+            )
         else:
-            from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
-            vec = TfidfVectorizer(ngram_range=self.ngram_range, min_df=self.min_df, max_features=self.max_features)
+            vec = TfidfVectorizer(
+                ngram_range=self.ngram_range,
+                min_df=self.min_df,
+                max_df=self.max_df,
+                max_features=self.max_features,
+            )
         self._vectorizer = vec
         self._matrix = vec.fit_transform(docs)
 
